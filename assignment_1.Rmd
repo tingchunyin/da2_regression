@@ -15,10 +15,11 @@ library(modelsummary)
 df <- read_csv('https://osf.io/4ay9x/download')
 ```
 
-## Unconditional mean weekly income difference between men and women
+## We would like to look at the unconditional income difference bewteen men and female Lawyers, Judges, magistrates, and other judicial workers
 ```{r}
 diff_mw <- df %>% 
   filter(!is.na(hhid)) %>% 
+  filter(occ2012 == 2100) %>%
   select(sex, earnwke) %>% 
   group_by(sex) %>% 
     summarise(mean_earning = mean(earnwke),
@@ -26,6 +27,10 @@ diff_mw <- df %>%
 diff_mw <- diff_mw %>% add_row(sex = NA , mean_earning = diff(diff_mw$mean_earning), numObs = sum(diff_mw$numObs))
 diff_mw
 ```
-## We can see that the difference in unconditional weekly gender pay gap between men and women is $243 on average.
+## We can see that the difference in unconditional weekly gender pay gap between men and women is $297 on average in 1027 observations.
 
+## Gender pay gap with education difference
+```{r}
+
+```
 
