@@ -7,19 +7,25 @@ date: "2022-11-23"
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
+library(modelsummary)
 ```
 
-
+# loading data
 ```{r load df}
 df <- read_csv('https://osf.io/4ay9x/download')
 ```
 
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
+## Unconditional mean weekly income difference between men and women
+```{r}
+diff_mw <- df %>% 
+  filter(!is.na(hhid)) %>% 
+  select(sex, earnwke) %>% 
+  group_by(sex) %>% 
+    summarise(mean_earning = mean(earnwke),
+            numObs = n())
+diff_mw <- diff_mw %>% add_row(sex = NA , mean_earning = diff(diff_mw$mean_earning), numObs = sum(diff_mw$numObs))
+diff_mw
 ```
+## We can see that the difference in unconditional weekly gender pay gap between men and women is $243 on average.
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
