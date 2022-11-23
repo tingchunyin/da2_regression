@@ -1,6 +1,9 @@
 ---
 title: "assignment_1"
-output: pdf_document
+output:
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
 date: "2022-11-23"
 ---
 
@@ -9,14 +12,15 @@ knitr::opts_chunk$set(echo = TRUE)
 library(tidyverse)
 library(modelsummary)
 library(ggplot2)
+library(plotrix)
 ```
 
 ```{r load df, include=FALSE}
 df <- read_csv('https://osf.io/4ay9x/download')
 ```
 
-## We would like to look at the unconditional income difference bewteen men and female Lawyers, Judges, magistrates, and other judicial workers
-```{r}
+## We would like to look at the unconditional income difference bewteen men and female Lawyers, Judges, magistrates, and other judicial workers (occ2012 = 2100)
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 df <- df %>% 
   filter(!is.na(hhid)) %>% 
   filter(occ2012 == 2100)
@@ -29,10 +33,10 @@ diff_mw <- df %>%
 diff_mw <- diff_mw %>% add_row(sex = NA , mean_earning = diff(diff_mw$mean_earning), numObs = sum(diff_mw$numObs))
 diff_mw
 ```
-We can see that the difference in unconditional weekly gender pay gap between men and women is $297 on average in 1027 observations.  
+We can see that the difference in unconditional weekly gender pay gap between men and women is $298 on average in 1027 observations.  
 
 ## Gender pay gap with education difference
-```{r message=FALSE, warning=FALSE}
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 edu_men <- df %>% group_by(grade92) %>% 
   filter(sex == 1) %>% 
   select(sex, earnwke) %>% 
@@ -57,9 +61,48 @@ diff_edu_plot <- ggplot(diff_edu, aes(x = diff_edu$grade92)) +
   theme_classic() + 
   theme(axis.line = element_line(arrow = arrow(type='closed', length = unit(10,'pt'))), axis.ticks.x=element_blank(), axis.text.x=element_blank())+
   xlim(37,47) +
-  ggtitle('Difference of earnings between men and women lawyers with different educational level')
+  ggtitle('Difference of earnings between men and women lawyers', 'with different educational level')
 
 diff_edu_plot
 ```
 
-From the regression line, we can see that Men Lawyers have higher earnings than Women Lawyers on all the education levels, while the average earning of both genders tend to increase with higher education qualification.
+From the regression line, we can see that Men Lawyers have higher earnings than Women Lawyers on all the education levels, while the average earning of both genders tend to increase with higher education qualification.  
+  
+## Correlation Coefficient between educational level and average earnings of men and women lawyers
+```{r echo=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+diff_edu$diff <- diff_edu$mean_earning_m - diff_edu$mean_earning_wm
+
+diff_edu <- diff_edu %>% filter(!is.na(mean_earning_m)) %>% 
+  filter(!is.na(mean_earning_wm))
+```
+
+Correlation Coefficient between educational level and average earnings of men lawyers
+```{r message=FALSE, warning=FALSE}
+cor(diff_edu$grade92, diff_edu$mean_earning_m)
+```
+
+Correlation Coefficient between educational level and average earnings of women lawyers
+```{r message=FALSE, warning=FALSE}
+cor(diff_edu$grade92, diff_edu$mean_earning_wm)
+```
+
+## Regression Coefficients
+β0 and β1 of men lawyers earnings dependent on their education level
+```{r message=FALSE, warning=FALSE}
+lm(diff_edu$mean_earning_m ~ diff_edu$grade92)
+```
+Standard Error of sample with the regression value of men lawyers earnings dependent on their education level
+```{r message=FALSE, warning=FALSE}
+std.error(diff_edu$mean_earning_m)
+```
+
+β0 and β1 of women lawyers earnings dependent on their education level
+```{r message=FALSE, warning=FALSE}
+lm(diff_edu$mean_earning_wm ~ diff_edu$grade92)
+```
+
+Standard Error of sample with the regression value of women lawyers earnings dependent on their education level
+```{r message=FALSE, warning=FALSE}
+std.error(diff_edu$mean_earning_wm)
+```
+
