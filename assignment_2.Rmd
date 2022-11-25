@@ -1,0 +1,49 @@
+---
+title: "assignment_2"
+output:   
+  prettydoc::html_pretty:
+    theme: cayman
+    highlight: github
+date: "2022-11-25"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(modelsummary)
+library(ggplot2)
+if (!require(fixest)){
+  install.packages('fixest')
+  library(fixest)
+}
+if (!require(grid)){
+  install.packages('grid')
+  library(grid)
+}
+```
+
+
+Load data (both hotel price and feature)
+```{r echo=TRUE, message=FALSE, warning=FALSE, results='hide'}
+hotels_p <- read_csv('https://osf.io/p6tyr/download')
+hotels_f <- read_csv('https://osf.io/utwjs/download')
+```
+
+
+```{r eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
+# Let's see what cities are in the hotels dataframe 
+unique(hotels_f$city_actual)
+```
+
+Let's see if records of London's Hotel is more than 250 observations
+```{r}
+nrow(hotels_f %>% filter(city_actual == 'London'))
+```
+
+
+
+
+
+
+
+
