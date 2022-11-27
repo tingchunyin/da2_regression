@@ -7,55 +7,144 @@ output:
 date: "2022-11-25"
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+```{r include=FALSE, message=FALSE, warning=FALSE}
+rm(list=ls())
+# load libraries
 library(tidyverse)
+library(haven)
+library(data.table)
+library(rms)
+library(lspline)
+library(huxtable)
 library(modelsummary)
+library(pscl)
+library(esquisse)
 library(ggplot2)
-if (!require(fixest)){
-  install.packages('fixest')
-  library(fixest)
-}
-if (!require(grid)){
-  install.packages('grid')
-  library(grid)
-}
+library(mfx)
+library(scales)
 ```
 
-
-Load data (both hotel price and feature)
 ```{r echo=TRUE, message=FALSE, warning=FALSE, results='hide'}
+# load data (both hotel price and feature)
 hotels_p <- read_csv('https://osf.io/p6tyr/download')
 hotels_f <- read_csv('https://osf.io/utwjs/download')
 ```
 
-
-```{r eval=FALSE, message=FALSE, warning=FALSE, include=FALSE}
-# Let's see what cities are in the hotels dataframe 
-unique(hotels_f$city_actual)
+```{r, include=FALSE}
+# joining the 2 tables
+df <- left_join(hotels_f, hotels_p, by = "hotel_id")
+rm(hotels_f, hotels_p)
 ```
 
-Let's see if records of Dublin's Hotel is more than 250 observations
-```{r}
-nrow(hotels_f %>% 
-       filter(!is.na(hotel_id)) %>% 
-       filter(city_actual == 'Dublin') %>% 
-       group_by(hotel_id))
+```{r, include=FALSE}
+# select Paris,filter "hotel"
+df <- df %>% filter(city_actual == "Seville")
+
+df <- df[df$accommodation_type == "Hotel",]
+
+# filtering extreme values (I am only interested in hotels which are 600 or cheaper)
+df <- df %>% filter(price <= 600) %>% 
+  filter(!is.na(stars)) %>% 
+  filter(!is.na(distance)) %>% 
+  filter(!is.na(rating))
+
+# creating binary variable for high_rated
+df$high_rated <- ifelse(df$rating >= 4, 1, 0)
+
+# creating log price column
+df$lnprice <- log(df$price)
 ```
 
-combine the 2 tables, and filter only Dublin hotels
-```{r}
-df <- merge(hotels_f, hotels_p, by = "hotel_id")
-
-df <- df %>% 
-  filter(!is.na(hotel_id)) %>% 
-  filter(city_actual == "Dublin")
+# data summary
+```{r, echo=FALSE}
+# data summary on highly rated & stars
+p95 <- function(x){ quantile(x, .95, na.rm = TRUE)}
+data_sum <- datasummary( high_rated + distance + stars ~ 
+                           mean + SD + min + max + median + p95 + N, 
+                         data = df , title = "Data Summary" )
+data_sum
 ```
 
-Creating a column of binary variable: highly_rated = 1 if rating ≥ 4, 0 otherwise.
-```{r}
-df$bin<-ifelse(df$ratingta >= 4,1,0)
+# Plots for distance/stars vs probability of being high rated
+```{r, echo=FALSE, warning=FALSE, figures-side, fig.show="hold", out.width="50%"}
+# checking the regression line (loess) for each variable
+
+# by distance
+g1 <- ggplot(data = df, aes(x = distance, y = high_rated)) +
+  geom_smooth(method = "loess", formula = y~x, color = "navyblue") +
+  scale_y_continuous(limits = c(0,1), breaks = seq(0, 1, 0.2), labels = scales::percent) +
+  labs(x = "Distance",y = "Probability to be high rated") +
+  theme_bw() +
+  ggtitle("Figure 1 : Probability of being high rated vs Distance")
+g1
+
+# star
+g2 <- ggplot(data = df, aes(x = stars, y = high_rated)) +
+  geom_smooth(method = "loess", formula = y~x, color = "navyblue") +
+  scale_y_continuous(limits = c(0,1), breaks = seq(0, 1, 0.2), labels = scales::percent) +
+  labs(x = "Stars",y = "Probability to be high rated") +
+  theme_bw() +
+  ggtitle("Figure 2 : Probability of being high rated vs Stars")
+
+g2
 ```
+# Save lists for Regression Model Summary table
+```{r, include = FALSE}
+# creating the LPM with binary variable (high_rated)
+lpm <- lm(high_rated ~ lspline(stars, c(4)) + lspline(distance, c(0.6, 1.6)) + lnprice, data = df)
+df$pred_lpm <- predict(lpm)
+
+summary(df$pred_lpm)
+
+# the maximum probability is observed to be larger than 1, we should take logit and probit to predict the values for the data
+```
+# we used logit regression because it restrict the probability values between zero and 1 (include in documentation)
+```{r, include=FALSE} 
+# logit coefficients
+logit <- glm(high_rated ~ lspline(stars, c(4)) + lspline(distance,c(0.6, 1.6))+ lnprice, data=df, family='binomial'(link = "logit"))
+
+# add predicted probabilities into df
+df$pred_logit <- predict.glm(logit, type="response")
+
+# check maximum probability if it is == 1
+summary(df$pred_logit)
+
+# logit marginal differences
+logit_marg <- logitmfx(formula = high_rated ~ lspline(stars, c(4)) + lspline(distance,c(0.6, 1.6)) + lnprice, data=df, atmean=FALSE)
+
+# probit coefficients
+probit <- glm(high_rated ~ lspline(stars, c(4)) + lspline(distance,c(0.6, 1.6))+ lnprice, data=df, family=binomial(link="probit"))
+
+# add predicted probabilities into df
+df$pred_probit <- predict.glm(probit, type="response")
+
+# check maximum probability if it is == 1
+summary(df$pred_probit)
+
+# probit marginal differences
+probit_marg <- probitmfx(formula = high_rated ~ lspline(stars, c(4)) + lspline(distance,c(0.6, 1.6))+ lnprice, data=df, atmean=F)
+```
+
+# Regression Model Summary
+```{r, echo=FALSE}
+rename <- c('(Intercept)' = 'Constant',
+        'lspline(stars, c(4))1' = '4 stars of lower',
+        'lspline(stars, c(4))2' = 'higher than 4 stars',
+        'lspline(distance, c(0.6, 1.6))1' = 'disatnce >= 0.6',
+        'lspline(distance, c(0.6, 1.6))2' = 'disatnce >0.6, <=1.6',
+        'lspline(distance, c(0.6, 1.6))3' = 'disatnce >1.6')
+summary <- msummary(list("1. LPM" = lpm, "2. logit coeffs" = logit, "3. logit marg" = logit_marg, "4. probit" = probit, "5. probit marg" = probit_marg),
+         fmt="%.3f",
+         gof_omit = 'DF|Deviance|Log.Lik.|F|R2 Adj.|AIC|BIC|R2|PseudoR2',
+         stars=c('*' = .05, '**' = .01),
+          coef_rename = rename,
+         title = "Regression Model Summary of Hotels in Seville")
+summary
+```
+
+
+
+
 
 
 
