@@ -35,23 +35,27 @@ hotels_f <- read_csv('https://osf.io/utwjs/download')
 unique(hotels_f$city_actual)
 ```
 
-Let's see if records of London's Hotel is more than 250 observations
+Let's see if records of Dublin's Hotel is more than 250 observations
 ```{r}
 nrow(hotels_f %>% 
        filter(!is.na(hotel_id)) %>% 
-       filter(city_actual == 'London') %>% 
+       filter(city_actual == 'Dublin') %>% 
        group_by(hotel_id))
 ```
 
-combine the 2 tables, and filter only London hotels
+combine the 2 tables, and filter only Dublin hotels
 ```{r}
 df <- merge(hotels_f, hotels_p, by = "hotel_id")
 
 df <- df %>% 
   filter(!is.na(hotel_id)) %>% 
-  filter(city_actual == "London")
+  filter(city_actual == "Dublin")
 ```
 
+Creating a column of binary variable: highly_rated = 1 if rating ≥ 4, 0 otherwise.
+```{r}
+df$bin<-ifelse(df$ratingta >= 4,1,0)
+```
 
 
 
