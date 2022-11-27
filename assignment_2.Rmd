@@ -71,7 +71,7 @@ data_sum
 
 # by distance
 g1 <- ggplot(data = df, aes(x = distance, y = high_rated)) +
-  geom_smooth(method = "loess", formula = y~x, color = "navyblue") +
+  geom_smooth(method = "loess", formula = y~x, color = "dodgerblue2") +
   scale_y_continuous(limits = c(0,1), breaks = seq(0, 1, 0.2), labels = scales::percent) +
   labs(x = "Distance",y = "Probability to be high rated") +
   theme_bw() +
@@ -80,7 +80,7 @@ g1
 
 # star
 g2 <- ggplot(data = df, aes(x = stars, y = high_rated)) +
-  geom_smooth(method = "loess", formula = y~x, color = "navyblue") +
+  geom_smooth(method = "loess", formula = y~x, color = "sienna1") +
   scale_y_continuous(limits = c(0,1), breaks = seq(0, 1, 0.2), labels = scales::percent) +
   labs(x = "Stars",y = "Probability to be high rated") +
   theme_bw() +
@@ -126,7 +126,7 @@ probit_marg <- probitmfx(formula = high_rated ~ lspline(stars, c(4)) + lspline(d
 ```
 
 # Regression Model Summary
-```{r, echo=FALSE}
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 rename <- c('(Intercept)' = 'Constant',
         'lspline(stars, c(4))1' = '4 stars of lower',
         'lspline(stars, c(4))2' = 'higher than 4 stars',
