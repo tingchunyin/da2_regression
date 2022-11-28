@@ -1,5 +1,6 @@
 ---
 title: "assignment_2 exhibits"
+author: "Hugo TING"
 output:   
   prettydoc::html_pretty:
     theme: cayman
@@ -11,15 +12,15 @@ date: "2022-11-25"
 rm(list=ls())
 # load libraries
 library(tidyverse)
+library(ggplot2)
 library(haven)
 library(data.table)
-library(rms)
+library(modelsummary)
 library(lspline)
 library(huxtable)
-library(modelsummary)
-library(pscl)
 library(esquisse)
-library(ggplot2)
+library(pscl)
+library(rms)
 library(mfx)
 library(scales)
 ```
@@ -60,7 +61,7 @@ df$lnprice <- log(df$price)
 ```{r, echo=FALSE}
 # data summary on highly rated & stars
 p95 <- function(x){ quantile(x, .95, na.rm = TRUE)}
-data_sum <- datasummary( high_rated + distance + stars ~ 
+data_sum <- datasummary( high_rated + distance + stars + lnprice~ 
                            mean + SD + min + max + median + p95 + N, 
                          data = df , title = "Data Summary" )
 data_sum
@@ -71,17 +72,17 @@ data_sum
 # checking the regression line (loess) for each variable
 
 # by distance
-g1 <- ggplot(data = df, aes(x = distance, y = high_rated)) +
+p1 <- ggplot(data = df, aes(x = distance, y = high_rated)) +
   geom_smooth(method = "loess", formula = y~x, color = "dodgerblue2") +
   scale_y_continuous(limits = c(0,1), breaks = seq(0, 1, 0.2), labels = scales::percent) +
   labs(x = "Distance",y = "Probability to be high rated") +
   theme_bw() +
   ggtitle("Figure 1 : Probability of being high rated vs Distance") +
    theme(plot.title = element_text(size = 10))
-g1
+p1
 
-# star
-g2 <- ggplot(data = df, aes(x = stars, y = high_rated)) +
+# by stars
+p2 <- ggplot(data = df, aes(x = stars, y = high_rated)) +
   geom_smooth(method = "loess", formula = y~x, color = "sienna1") +
   scale_y_continuous(limits = c(0,1), breaks = seq(0, 1, 0.2), labels = scales::percent) +
   labs(x = "Stars",y = "Probability to be high rated") +
@@ -89,7 +90,18 @@ g2 <- ggplot(data = df, aes(x = stars, y = high_rated)) +
   ggtitle("Figure 2 : Probability of being high rated vs Stars")+
    theme(plot.title = element_text(size = 10))
 
-g2
+p2
+
+# by log price
+p3 <- ggplot(data = df, aes(x = lnprice, y = high_rated)) +
+  geom_smooth(method = "loess", formula = y~x, color = "darkslategrey") +
+  scale_y_continuous(limits = c(0,1), breaks = seq(0, 1, 0.2), labels = scales::percent) +
+  labs(x = "lnprice",y = "Probability to be high rated") +
+  theme_bw() +
+  ggtitle("Figure 3 : Probability of being high rated vs lnprice")+
+   theme(plot.title = element_text(size = 10))
+
+p3
 ```
 
 ```{r, include = FALSE}
@@ -111,7 +123,7 @@ logit <- glm(high_rated ~ lspline(stars, c(4)) + lspline(distance,c(0.6, 1.6))+ 
 # add predicted probabilities into df
 df$pred_logit <- predict.glm(logit, type="response")
 
-# check maximum probability if it is == 1
+# check maximum probability if it is = 1
 summary(df$pred_logit)
 
 # logit marginal differences
@@ -123,7 +135,7 @@ probit <- glm(high_rated ~ lspline(stars, c(4)) + lspline(distance,c(0.6, 1.6))+
 # add predicted probabilities into df
 df$pred_probit <- predict.glm(probit, type="response")
 
-# check maximum probability if it is == 1
+# check maximum probability if it is = 1
 summary(df$pred_probit)
 
 # probit marginal differences
@@ -133,7 +145,7 @@ probit_marg <- probitmfx(formula = high_rated ~ lspline(stars, c(4)) + lspline(d
 # Regression Model Summary
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
 rename <- c('(Intercept)' = 'Constant',
-        'lspline(stars, c(4))1' = '4 stars of lower',
+        'lspline(stars, c(4))1' = '4 stars or lower',
         'lspline(stars, c(4))2' = 'higher than 4 stars',
         'lspline(distance, c(0.6, 1.6))1' = 'disatnce >= 0.6',
         'lspline(distance, c(0.6, 1.6))2' = 'disatnce >0.6, <=1.6',
@@ -149,7 +161,7 @@ summary
 
 # Predicted Probability of LPM, Logit and Probit Models
 ```{r, echo=FALSE, warning=FALSE, fig.height=4, fig.width=6}
-g3 <- ggplot(data = df) +
+p3 <- ggplot(data = df) +
   geom_point(aes(x=pred_lpm, y=pred_probit, color="Probit"), size=0.5,  shape=16) +
   geom_point(aes(x=pred_lpm, y=pred_logit,  color="Logit"), size=0.5,  shape=16) +
   geom_line(aes(x=pred_lpm, y=pred_lpm,    color="45 Degree line"), size=0.5) +
@@ -158,9 +170,9 @@ g3 <- ggplot(data = df) +
   scale_x_continuous(expand = c(0.00,0.0), limits = c(0,1), breaks = seq(0,1,0.2)) +
   scale_color_manual(name = "", values=c("#541352FF", "#3a5e8cFF","#10a53dFF")) +
   theme_light()+
-  ggtitle("Figure 3 : Predicted Probability of LPM, Logit and Probit Models")
+  ggtitle("Figure 4 : Predicted Probability of LPM, Logit and Probit Models")
   
-g3
+p3
 ```
 
 
